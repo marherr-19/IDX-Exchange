@@ -120,3 +120,6 @@ print("Invalid date records:", len(invalid_dates))
 county_prices = sold.groupby('CountyOrParish')['ClosePrice'].median().sort_values(ascending=False)
 print("\nMedian Price by County:")
 print(county_prices.head(10))
+
+# Write new CSV file
+sold.to_csv("filtered_residential_sold.csv", index = False)
