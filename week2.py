@@ -43,8 +43,15 @@ high_missing = missing_df[missing_df['MissingPercent'] > 90]
 print("\nColumns with >90% missing:")
 print(high_missing)
 
+# Drop high-missing columns (except core ones)
+core_cols = ['ClosePrice', 'ListPrice', 'LivingArea', 'DaysOnMarket']
+cols_to_drop = [col for col in high_missing.index if col not in core_cols]
+sold = sold.drop(columns=cols_to_drop)
+print("\nDropped columns:", cols_to_drop)
+
 # Numeric distribution summary
-numeric_cols = [ 'ClosePrice', 'LivingArea', 'DaysOnMarket' ]
+numeric_cols = [ 'ClosePrice', 'ListPrice', 'OriginalListPrice', 'LivingArea', 'LotSizeAcres', 'BedroomsTotal', 'BathroomsTotalInteger', 'DaysOnMarket', 'YearBuilt' ]
+numeric_cols = [col for col in numeric_cols if col in sold.columns]
 summary = sold[numeric_cols].describe(percentiles = [0.25, 0.5, 0.75, 0.9, 0.95])
 print("\nNumeric Summary:")
 print(summary)
@@ -75,6 +82,15 @@ print("Zero price records:", len(zero_prices))
 print("Max ClosePrice:", sold['ClosePrice'].max())
 print("Max LivingArea:", sold['LivingArea'].max())
 
+# Basic data cleaning
+if 'DaysOnMarket' in sold.columns:
+    sold = sold[sold['DaysOnMarket'] >= 0]
+if 'ClosePrice' in sold.columns:
+    sold = sold[sold['ClosePrice'] > 0]
+if 'ListPrice' in sold.columns:
+    sold = sold[sold['ListPrice'] > 0]
+print("After cleaning shape", sold.shape)
+
 # Residential vs others (already filtered?)
 original = pd.read_csv("combined_sold_residential.csv", low_memory=False)
 type_counts = original['PropertyType'].value_counts(normalize=True) * 100
@@ -89,12 +105,9 @@ print("Average Close Price:", sold['ClosePrice'].mean())
 print(sold['DaysOnMarket'].describe())
 
 # Above vs below list price
-sold['AboveList'] = sold['ClosePrice'] > sold['ListPrice']
-percent_above = sold['AboveList'].mean() * 100
+percent_above = (sold['ClosePrice'] > sold['ListPrice']).mean() * 100
+percent_below = (sold['ClosePrice'] < sold['ListPrice']).mean() * 100
 print("Percent sold above list:", percent_above)
-
-sold['BelowList'] = sold['ClosePrice'] < sold['ListPrice']
-percent_below = sold['BelowList'].mean() * 100
 print("Percent sold below list:", percent_below)
 
 # Date consistency check
@@ -107,12 +120,3 @@ print("Invalid date records:", len(invalid_dates))
 county_prices = sold.groupby('CountyOrParish')['ClosePrice'].median().sort_values(ascending=False)
 print("\nMedian Price by County:")
 print(county_prices.head(10))
-
-
-# Check difference between old and new CSV
-sold.to_csv("filtered_residential_sold.csv", index=False)
-new = pd.read_csv("filtered_residential_sold.csv", low_memory=False)
-print("Shape (rows, cols):", new.shape)
-old = pd.read_csv("combined_sold_residential.csv", low_memory=False)
-print("New columns:")
-print(set(new.columns) - set(old.columns))
